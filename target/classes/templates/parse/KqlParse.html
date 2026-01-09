@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html xmlns:th="http//www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layouts/queryLayout}">
+
+<div layout:fragment="content">
+ 	<script type="text/javascript">
+        $(document).ready(function(){
+            console.log("주소 :" + window.location.href);
+
+            document.getElementById("inputQuery").addEventListener("keydown", function(e) {
+                if(e.key === "Enter") {
+                    document.getElementById("convertBtn").click();
+                }
+            });
+        });
+
+        function transformQuery() {
+            $("#outputQuery").text("").css("color","");
+            const Ops = ["AND","OR","NEAR","NOT"];
+            const val = $("#inputQuery").val().trim();
+            if(val == null || val == ""){
+                $("#outputQuery").text("검색어를 입력해주세요!").css("color","#ffb74d");
+                return false;
+            }
+
+            for(var op of Ops){
+                if(val.toLowerCase().startsWith(op.toLowerCase())){
+                    $("#outputQuery").text("맨앞쪽에 "+op+" 연산자를 쓰면안됩니다.!").css("color","#ffd54f");
+                    return false;
+                }
+
+                if(val.toLowerCase().endsWith(op.toLowerCase())){
+                    $("#outputQuery").text("맨뒷쪽에 "+op+" 연산자를 쓰면안됩니다.!").css("color","#ffd54f");
+                    return false;
+                }
+            }
+
+            fetch("/study/transformQuery", {
+                method: "POST",
+                headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                body: "query=" + encodeURIComponent(val)
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (!data.ok) throw new Error(data.result);
+
+                $("#outputQuery").html(
+                    "원본 쿼리: " + val + "<br><br>" +
+                    "변형된 쿼리: " + data.result
+                );
+                $("#inputQuery").val("");
+            })
+            .catch(err => {
+                $("#outputQuery").text("오류메세지 => " + err.message).css("color","#ff4d4d");
+            });
+        }
+    </script>
+    <div class="container container-box">
+        <h2 class="text-center app-title mb-4">🔍 Query Transformer</h2>
+        <div class="card query-card p-4">
+
+            <label class="label mb-2">검색어 입력</label>
+            <div class="input-group mb-3">
+                <input type="text" id="inputQuery" class="form-control" placeholder="여기에 검색 쿼리를 입력하세요" />
+                <button id="convertBtn" class="btn btn-primary" onclick="transformQuery();">변환</button>
+            </div>
+
+            <label class="label mt-2 mb-2">변형된 쿼리</label>
+            <div id="outputQuery" class="result-box">변환된 쿼리가 여기에 표시됩니다.</div>
+
+        </div>
+    </div>
+</div>
+</html>
