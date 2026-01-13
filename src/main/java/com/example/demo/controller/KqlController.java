@@ -19,7 +19,6 @@ public class KqlController {
 	@Autowired
 	KqlService kqlService;
 
-	// GET 요청: 페이지 보여주기
     @RequestMapping(value = "/", method = RequestMethod.GET)
     public String KqlParse() {
         return "parse/KqlParse";
@@ -39,5 +38,13 @@ public class KqlController {
             System.out.println("오류메세지: " + e.getMessage());
         }
         return map;
+    }
+    
+    @RequestMapping(value="/study/test", method = RequestMethod.POST,  produces="text/plain; charset=UTF-8")
+    @ResponseBody
+    public String test (@RequestParam("query") String query) {
+    	String result = query + "_테스트합니다.";
+    	
+    	return result;
     }
 }

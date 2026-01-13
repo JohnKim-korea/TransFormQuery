@@ -1,6 +1,7 @@
 package com.example.demo.service;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -28,67 +29,63 @@ public class KqlService {
 		indexList = (ArrayList<Integer>) resultMap.get("indexList");
 		text = (String) resultMap.get("text");
 		String result = "";
-		Pattern pattern = Pattern.compile("\"([^\"]*)\""); // 따움표로 감싸지는경우 |\\([^()]*\\) 지움
-		Matcher matcher = pattern.matcher(text);
-		while (true) {
-			if (matcher.find()) { // 따음표로 감싸져있을때
-				String findString = matcher.group(0).trim();// 따음표 감싼문자
-				if (map.containsValue(findString)) { // 중복 방지
-					Matcher checkd1 = Pattern.compile(findString).matcher(otext);
-					int len1 = map.get(index).length();
-					int count = index + len1;
-					while (checkd1.find(count)) {
-						index = checkd1.start();
-						break;
+		if (!text.isBlank()) {
+			Pattern pattern = Pattern.compile("\"([^\"]*)\""); // 따움표로 감싸지는경우 |\\([^()]*\\) 지움
+			Matcher matcher = pattern.matcher(text);
+			while (true) {
+				if (matcher.find()) { // 따음표로 감싸져있을때
+					String findString = matcher.group(0).trim();// 따음표 감싼문자
+					if (map.containsValue(findString)) { // 중복 방지
+						Matcher checkd1 = Pattern.compile(findString).matcher(otext);
+						int len1 = map.get(index).length();
+						int count = index + len1;
+						while (checkd1.find(count)) {
+							index = checkd1.start();
+							break;
+						}
+					} else {
+						index = otext.indexOf(findString);
 					}
-				} else {
-					index = otext.indexOf(findString);
-				}
-				indexList.add(index); // 문자조합을 순서대로 재조립하기위해서 만듬
-				map.put(index, findString);
-				text = text.replaceFirst(Pattern.quote(findString), ""); // 앞쪽부터 순서대로 치환
-			} else {
-				if (text.contains(" ")) { // 따음표없는곳에 공백이 있을경우
-					for (String s : text.split(" ")) {// 공백을 기준으로 배열을 만들고 배열을 String s 에담아서 문자가공
-						if (s.isEmpty())
-							continue; // 쓸데없는 공백, 따음표가 홀로있을때
-						Collections.sort(indexList);
-						if (s.equals("\"")) { // 따음표가 감싸져있는것들은 위에서 제거했으므로 이경우 따음표홀로있을 경우를 의미함
-							Pattern firstQ = Pattern.compile("^\""); // 첫번째 따음표 홀로있을경우
-							Pattern lastQ = Pattern.compile("\"$"); // 마지막 따음표 홀로있을경우
-							Matcher firstQM = firstQ.matcher(otext);
-							Matcher lastQM = lastQ.matcher(otext);
-							if (firstQM.find()) {
-								indexList.add(firstQM.start());
-								map.put(firstQM.start(), firstQM.group(0).replace("\"", "")); // \\\" -> "" 수정 따음표 홀로있으며
-																								// 문자랑 떨어진경우 (맨앞)
+					indexList.add(index); // 문자조합을 순서대로 재조립하기위해서 만듬
+					map.put(index, findString);
+					text = text.replaceFirst(Pattern.quote(findString), ""); // 앞쪽부터 순서대로 치환
+				} else { //토큰에 감싸여있지 않은 문자들 공백을 기준으로 나눈다.
+					if (text.contains(" ")) {
+						for (String s : text.split(" ")) {// 공백을 기준으로 배열을 만들고 배열을 String s 에담아서 문자가공
+							if (s.isEmpty())
+								continue; // 쓸데없는 공백, 따음표가 홀로있을때
+							Collections.sort(indexList);
+							// 여기는 따음표로 감싸져있지않은 문자 와 괄호로 감싸져있지않은 문자들
+							// 중복문제 해결및 괄호 안에있는것과 따음표안에있는것들제외한 문자들만 처리
+							if (map.isEmpty()) { // 만일 따음표 및 괄호로 감싸여있지않았을때를 대비함
+								index = otext.indexOf(s);
+								s = s.replace("\"", "\\\"");
+								indexList.add(index);
+								map.put(index, s);
 							}
-							if (lastQM.find()) {
-								indexList.add(lastQM.start());
-								map.put(lastQM.start(), lastQM.group(0).replace("\"", "")); // \\\" -> "" 수정 따음표 홀로있으며
-																							// 문자랑 떨어진경우 (맨뒤)
-							}
-						} else { // 여기는 따음표로 감싸져있지않은 문자 와 괄호로 감싸져있지않은 문자들
-									// 중복문제 해결및 괄호 안에있는것과 따음표안에있는것들제외한 문자들만 처리
-							if (!map.containsValue(s)) {
+
+							if (!map.containsValue(s) && indexList.size() > 0 && !map.isEmpty()) {
 								findSOutsideIndex(text, indexList, map, otext, s);
 							} else { // 이미 중복문자를 저장했으므로 continue문으로 올라간다.
 								continue;
 							}
 
 						}
+					} else { // 공백으로 안나뉘어있을경우
+						index = otext.indexOf(text);
+						indexList.add(index);
+						text = text.replace("\"", "\\\""); // 따음표혼자 있을경우
+						map.put(index, text);
 					}
-				} else {
-					index = otext.indexOf(text);
-					indexList.add(index);
-					map.put(index, text);
+					text = text.replace(text, ""); // replaceFirst를 하면 안될거같음
 				}
-				text = text.replace(text, ""); // replaceFirst를 하면 안될거같음
+				if (text.isEmpty())
+					break;
 			}
-			if (text.isEmpty())
-				break;
 		}
 		Collections.sort(indexList); // 순서에 맞게 정렬(오름차순)
+		
+		WrongTextCheck(indexList,map); // 잘못된 텍스트를 검사함
 
 		if (!indexList.isEmpty() && !map.isEmpty()) {
 			result = KqlOrganize(otext, map, indexList); // 미완성
@@ -96,47 +93,138 @@ public class KqlService {
 
 		return result;
 	}
+	
+	// 연산자를 잘못쓸경우를 대비하여만듬
+	public static void WrongTextCheck(ArrayList<Integer> indexList,Map<Integer, String> map ) {
+		boolean hasNearNumer = map.values().stream().anyMatch(val -> val.matches("(?i)NEAR(?!\\s*\\d+)")); // (?!패턴) 해당 패턴이 오면 안된다.
+		if(hasNearNumer) {
+			throw new IllegalArgumentException("NEAR 연산자는 숫자랑 같이 써야합니다.");
+		}
+		
+		for (int i = 0; i < indexList.size(); i++) {
+		    String token = map.get(indexList.get(i));
+
+		    if (token.matches("(?i)\"NEAR\\s*\\d+\"")) {
+
+		        // 맨앞 토큰 체크
+		        if (i == 0) {
+		            throw new IllegalArgumentException("NEAR 앞에는 반드시 단어가 와야 합니다.");
+		        }
+
+		        // 맨뒤 토큰 체크
+		        if (i == indexList.size() - 1) {
+		            throw new IllegalArgumentException("NEAR 뒤에는 반드시 단어가 와야 합니다.");
+		        }
+
+		        String preToken = map.get(indexList.get(i - 1));
+		        String nextToken = map.get(indexList.get(i + 1));
+
+		        if (isOperater(preToken) || isOperater(nextToken)) {
+		            throw new IllegalArgumentException("NEAR 앞뒤에는 단어만 올 수 있습니다.");
+		        }
+		    }
+		}
+		
+		for (int i = 0; i < indexList.size() - 1; i++) {
+			String pre = map.get(indexList.get(i));
+			String next = map.get(indexList.get(i + 1));
+			if (pre.equalsIgnoreCase("AND") && next.equalsIgnoreCase("NOT")) { // AND NOT 은 허용
+				continue;
+			}
+			if (isOperater(pre) && isOperater(next)) {
+				throw new IllegalArgumentException("연산자가 연속으로 올수 없습니다. " + pre + " " + next);
+			}
+		}
+		
+	}
+	
+	public static boolean isOperater(String token) {
+		return token.equalsIgnoreCase("AND") || token.equalsIgnoreCase("OR")
+		|| token.equalsIgnoreCase("NOT") ||token.matches("(?i)\"NEAR\\s*\\d+\"");
+	}
 
 	// 해당 메서드는 원본문자를 넣고 시작과 끝 번지를 정하면 그사이에 해당 타겟문자의 시작번지를 찾는 메서드
 	public static int indexofInRange(String otext, String target, int start, int end) {
-		int limit = Math.min(end, otext.length() - 1);
-		for (int i = start; i < limit - target.length() + 1; i++) {
-			if (otext.startsWith(target, i)) {
+		if (target == null || target.isEmpty()) {
+			return -1;
+		}
+		int limit= Math.min(end, otext.length()); // end가 문자끝번지를 넘어가는것을 방지
+		int max= limit - target.length();
+
+		for (int i = start; i <= max; i++) { // 해당 max를 <= 이 부등호가 아니면 마지막으로 검사해야할 위치를 놓친다.
+			if (otext.startsWith(target, i)) { // max는 찾을려고하는 시작인덱스를 찾기때문에 < 이게아니라 <= 이것을 포함시겨야한다.
 				return i;
 			}
 		}
 		return -1;
 	}
 
-	// 해당 메서드는 위에서 처리한 토큰으로된 것들을 제외한 나머지 문자들을 중복글자가 같은 인덱스에 들어오지않게 처리
+	/* 해당 메서드는 위에서 시작인덱스(키) 토큰(값)으로 이루어진 Map 과 Map에 담겨진 시작인덱스를 담고있는 (정렬된!!) 정수형 indexList를 이용하여
+	 * indexList 와 Map 을 기준으로 타겟문자 s 를 찾는 메서드인다.
+	 * 1. 0부터시작하여 마지막 indexList의 최솟값(처음 만들어진 토큰)까지 반복문(while)을 이용하여 타겟문자가 없을때까지 찾느다. 
+	 * 2. 정렬된 indexList를 기준으로 for 문을 돌린다음에 위에서 언급했던 반복문을 이용하여 블록간의 사이 사이를 타겟문자가 없을때까지 찾는다.
+	 * 3. 마지막으로 마지막토큰의 끝번호부터 시작해서 문자마지막 번지까지 반복문을 이용하여 타겟문자가 없을때까지 찾는다.
+	 * (While 문을 이용하여 찾는 이유는 이리하면 중복된 타겟문자를 찾을수있기때문이다.)
+	 * (While문의 break (findIndex == -1) => 타겟문자가 없을때까지)
+	 * */ 
 	public static void findSOutsideIndex(String text, ArrayList<Integer> indexList, Map<Integer, String> map,
 			String otext, String s) {
 		List<Integer> Add = new ArrayList<>();
-		for (int cnt = 0; cnt < indexList.size(); cnt++) {
-			int blockIndex = indexList.get(cnt);
-			String block = map.get(blockIndex);
-			int start = blockIndex + block.length();
-			int end = (cnt == indexList.size() - 1) ? otext.length() : indexList.get(cnt + 1);
-			int findIndex = indexofInRange(otext, s, start, end);
-
-			if (findIndex == -1)
-				continue; // continue를 해야 나머지 바깥쪽구간들을 찾을수있음
-
+		int fbsidx = Collections.min(indexList); // 첫시작블록 시작번호 이게 end에 들어갈예정
+		int lbsidx = Collections.max(indexList); // 마지막블록 시작번호
+		int lbeidx = lbsidx + map.get(lbsidx).length(); // 마지막블록 끝번호 start 에 들어갈예정
+		int left = 0;
+		int right = 0;
+		while (true) { // 첫번째 블록 왼쪽구간에서 타겟 문자열 찾기
+			int findIndex = indexofInRange(otext, s, left, fbsidx);
+			if (findIndex == -1) {
+				break;
+			}
 			if (!map.containsKey(findIndex)) {
 				Add.add(findIndex);
 			}
-
+			left = findIndex + s.length();
 		}
+
+		for (int i = 0; i < indexList.size(); i++) { // 블록 사이구간에서 타겟문자열찾기
+			int blockIndex = indexList.get(i);
+			String block = map.get(blockIndex);
+			int sideStart = blockIndex + block.length(); // 전블록 끝번호
+			int sideEnd = (i == indexList.size() - 1) ? blockIndex + block.length() : indexList.get(i + 1); // 다음 블록 시작전
+			while (true) { // 중복문자열 방지
+				int findIndex = indexofInRange(otext, s, sideStart, sideEnd);
+				if (findIndex == -1) {
+					break;
+				}
+
+				if (!map.containsKey(findIndex)) {
+					Add.add(findIndex);
+				}
+				sideStart = findIndex + s.length();
+			}
+		}
+
+		right = lbeidx;
+		while (true) { // 마지막 블록 오른쪽구간에서 타겟 문자열 찾기
+			int findIndex = indexofInRange(otext, s, right, otext.length());
+			if (findIndex == -1) {
+				break;
+			}
+			if (!map.containsKey(findIndex)) {
+				Add.add(findIndex);
+			}
+			right = findIndex + s.length();
+		}
+
+		s = s.replace("\"", "\\\""); // 홀로 따음표가 있을경우
 		for (int In : Add) {
 			map.put(In, s);
-			s = s.replace("\"", "\\\""); // 홀로 따음표가 있을경우
 			indexList.add(In);
 		}
 		Collections.sort(indexList);
-
 	}
 
-	// near 숫자 패턴에 따음표 붙이는 메서드 ,따음표 혹은 괄호로 묶여져있는 NEAR 숫자 패턴을 제외
+	// near 숫자 패턴에 따음표 붙이는 메서드 (따음표 혹은 괄호로 묶여져있는 NEAR 숫자 패턴을 제외)
 	public static String NearAddQuotes(String text) throws Exception {
 		Map<Integer, Object> groupList = new HashMap<>();
 		boolean inQuotes = false;
@@ -191,7 +279,7 @@ public class KqlService {
 		return textbf.toString();
 	}
 
-	// 중첩괄호 문제 해결
+	//괄호로 감싸여있는 문자들을 map과 indexList에 담는 역활을 함(이렇게 코딩하면 중첩괄호가있는것도 map에 담겨짐) 
 	public static Map<String, Object> dubleBracketProcess(String text, Map<Integer, String> map,
 			ArrayList<Integer> indexList) throws Exception {
 		Map<String, Object> resultMap = new HashMap<>();
@@ -256,7 +344,8 @@ public class KqlService {
 		resultMap.put("text", text);
 		return resultMap;
 	}
-
+	
+	//해당 메서드는 OR연산자를 기준으로 괄호를 묶는역활을 맡고있음 (따음표와 괄호로 감싸져있는부분을제외)
 	public static String SplitOR(String text) {
 		String rtext = text.trim();
 		int depth = 0;
@@ -296,7 +385,7 @@ public class KqlService {
 		}
 		parts.add(rtext.substring(prev)); // 마지막 남겨진 문자 넣기
 
-		String result = parts.stream().map(part -> {
+		String result = parts.stream().map(part -> { // .map 각요소를 다른값으로 변환
 			part = part.trim();
 			if (part.startsWith("(") && part.endsWith(")")) {
 				return part;
@@ -309,6 +398,9 @@ public class KqlService {
 	}
 
 	// KQL 정리메서드
+	/* 1. 단어와 단어사이에 공백이 있으면 그 공백을 AND로 채워주고 따음표로 감싸져있는 부분을 제외한 모든 문자들을 따음표로 감싸는 역활을함
+	 * 2. 따음표로 감싼 near 숫자패턴을 따음표를 없애고 올바른 NEAR 연산자의 모양을 맞춤
+	 * */
 	public static String KqlOrganize(String otext, Map<Integer, String> map, ArrayList<Integer> indexList) {
 		StringBuffer result = new StringBuffer();
 		String preType = "none"; // none(없음) , word(단어), op(연산자)
@@ -319,7 +411,7 @@ public class KqlService {
 			String token = map.get(i);
 			boolean isOP = token.equalsIgnoreCase("AND") || token.equalsIgnoreCase("OR")
 					|| token.equalsIgnoreCase("NOT") || token.matches("(?i)\"NEAR\\s*\\d+\"");
-			
+
 			boolean inquotes = token.startsWith("\"") && token.endsWith("\"");
 			if (!inquotes && !isOP && !token.matches("^\"[^\"]+\"$") && !token.matches("^\\(.*\\)$")) {
 				token = "\"" + token + "\"";
@@ -327,26 +419,33 @@ public class KqlService {
 			if (token.matches("^\\(.*\\)$")) { // 토큰이 괄호로 감쌰저있고 그안에 연산자들이 있을때
 				token = token.substring(1, token.length() - 1).trim(); // 괄호제거
 				// (?패턴1:패턴2) 그룹으로 묵되 그룹번호저장 X
-				Matcher wd = Pattern.compile("(?i)(?:\"[^\"]+\"|\\bNEAR\\s*\\d\\b|\\b[^\\s()]+\\b)").matcher(token);
-				//Matcher wd = Pattern.compile("(?i)\\b(?:NEAR\\s*\\d|[^\\s()\"]+)\\b").matcher(token);																									
+				Matcher wd = Pattern.compile("(?i)(?:\"[^\"]+\"|\\bNEAR\\s*\\d+\\b|\\b[^\\s()]+\\b)").matcher(token);
+				// Matcher wd = Pattern.compile("(?i)\\b(?:NEAR\\s*\\d|[^\\s()\"]+)\\b").matcher(token);
 				StringBuffer sbf = new StringBuffer();
 				boolean isOR = false;
 				while (wd.find()) {
 					String word = wd.group();
 					if (word.matches("(?i)(AND\\s+NOT|AND|OR|NOT|NEAR\\s*\\d+)")) {
+						if (word.matches("(?i)near\\s*\\d+")) {
+							word = word.replaceAll("(?i)near\\s*(\\d+)", "NEAR $1");
+						}
+						wd.appendReplacement(sbf, word.toUpperCase());
+					} else if (word.startsWith("\"") && word.endsWith("\"")) { // 따음표 있으면 그대로적음
 						wd.appendReplacement(sbf, word);
-					}else if(word.startsWith("\"") && word.endsWith("\"")) { // 따음표 있으면 그대로적음
-						wd.appendReplacement(sbf,word);	
-					}else {
-						wd.appendReplacement(sbf, "\"" + word + "\"");				
+					} else {
+						wd.appendReplacement(sbf, "\"" + word + "\"");
 					}
 				}
 				wd.appendTail(sbf);
-				token = "(" + sbf.toString() + ")";
+				token = "(" + sbf.toString().replaceAll("([!@#$%^&*_+=\\[\\]{}|;:,.<>/?\\\\-])", "\\\\$1") + ")"; // 특수문자
+																													// 이스케이프
+																													// 처리
 			}
 			if (isOP) { // 연산자일때
-				if (token.matches("(?i)\"NEAR\\s*\\d+\""))
+				if (token.matches("(?i)\"NEAR\\s*\\d+\"")) {
 					token = token.replace("\"", ""); // near 패턴일때 따음표제거
+					token = token.replaceAll("(?i)near\\s*(\\d+)", "NEAR $1");
+				}
 				result.append(preType.equals("op") && token.equalsIgnoreCase("NOT") ? "" : " ") // not 일때 앞에 연산자가 있으면 공백
 																								// 하나만씀
 						.append(token.toUpperCase()).append(" ");
@@ -354,14 +453,16 @@ public class KqlService {
 				continue;
 			}
 
-			if (preType.equals("word") && count != indexList.size()) { // 일반단어일때
+			if (preType.equals("word")) { // 일반단어일때 (이부분)
 				result.append(" AND ");
 			}
 			result.append(token);
 			preType = "word";
 		} // 공백 일때 " AND " 쓰는곳 및 near패턴 따음표제거 일반단어(따음표)가 연속되면 AND 자동삽입 일반단어 따음표씌우는곳
+			// OR 확인
+		boolean hasOR = map.values().stream().anyMatch(key -> "OR".equalsIgnoreCase(key));
 
-		if (map.containsValue("OR")) {
+		if (hasOR) {
 			rtext = SplitOR(result.toString());
 		} else {
 			rtext = result.toString();

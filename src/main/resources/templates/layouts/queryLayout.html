@@ -6,7 +6,8 @@
     <title>쿼리 파서 사이트</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet"/>
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-	<head th:replace="layouts/css :: queryCss"></head> <!-- 헤드 부분은 이것을 써줘야 잘들어감 -->
+	<!-- <head th:replace="layouts/css :: queryCss"></head> -->
+	<th:block th:replace="~{layouts/css :: queryCss}"></th:block> <!-- 헤드 부분은 이것을 써줘야 잘들어감 -->
 </head>
 <body>
     <div layout:fragment="content"></div>

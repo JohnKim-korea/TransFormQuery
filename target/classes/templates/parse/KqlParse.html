@@ -1,10 +1,15 @@
 <!DOCTYPE html>
 <html xmlns:th="http//www.thymeleaf.org"
-      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
-      layout:decorate="~{layouts/queryLayout}">
+	xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+	layout:decorate="~{layouts/queryLayout}">
+<!-- prefix 와 suffix의 영향을 받느다. 왜냐면 뷰이름의 실제파일로 바꾸는 규칙이니까
+		   view 이름	✅
+		   layout:decorate	✅
+		   th:replace/include	✅ 이렇게 3곳만 영향을 받는다. css/js/img/URL 는 영향을 받지않는다.
+ -->
 
 <div layout:fragment="content">
- 	<script type="text/javascript">
+	<script type="text/javascript">
         $(document).ready(function(){
             console.log("주소 :" + window.location.href);
 
@@ -17,7 +22,7 @@
 
         function transformQuery() {
             $("#outputQuery").text("").css("color","");
-            const Ops = ["AND","OR","NEAR","NOT"];
+            const Ops = ["AND","OR","NOT"];
             const val = $("#inputQuery").val().trim();
             if(val == null || val == ""){
                 $("#outputQuery").text("검색어를 입력해주세요!").css("color","#ffb74d");
@@ -36,7 +41,7 @@
                 }
             }
 
-            fetch("/study/transformQuery", {
+           fetch("/study/transformQuery", {
                 method: "POST",
                 headers: { "Content-Type": "application/x-www-form-urlencoded" },
                 body: "query=" + encodeURIComponent(val)
@@ -54,22 +59,32 @@
             .catch(err => {
                 $("#outputQuery").text("오류메세지 => " + err.message).css("color","#ff4d4d");
             });
-        }
+        
+        
+       /*  fetch("/study/test",{method:"POST",headers: { "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8" },body:"query="+encodeURIComponent(val) })
+        .then(res => res.text())
+        .then(text => $("#outputQuery").text("테스트 쿼리: " + text)).catch(err => {
+        	$("#outputQuery").text("오류메세지 => " + err.message).css("color","#ff4d4d");
+        }); */
+     }    
+        
     </script>
-    <div class="container container-box">
-        <h2 class="text-center app-title mb-4">🔍 Query Transformer</h2>
-        <div class="card query-card p-4">
+	<div class="container container-box">
+		<h2 class="text-center app-title mb-4">🔍 Query Transform</h2>
+		<div class="card query-card p-4">
 
-            <label class="label mb-2">검색어 입력</label>
-            <div class="input-group mb-3">
-                <input type="text" id="inputQuery" class="form-control" placeholder="여기에 검색 쿼리를 입력하세요" />
-                <button id="convertBtn" class="btn btn-primary" onclick="transformQuery();">변환</button>
-            </div>
+			<label class="label mb-2">검색어 입력</label>
+			<div class="input-group mb-3">
+				<input type="text" id="inputQuery" class="form-control"
+					placeholder="여기에 검색 쿼리를 입력하세요" />
+				<button id="convertBtn" class="btn btn-primary"
+					onclick="transformQuery();">변환</button>
+			</div>
 
-            <label class="label mt-2 mb-2">변형된 쿼리</label>
-            <div id="outputQuery" class="result-box">변환된 쿼리가 여기에 표시됩니다.</div>
+			<label class="label mt-2 mb-2">변형된 쿼리</label>
+			<div id="outputQuery" class="result-box">변환된 쿼리가 여기에 표시됩니다.</div>
 
-        </div>
-    </div>
+		</div>
+	</div>
 </div>
 </html>
