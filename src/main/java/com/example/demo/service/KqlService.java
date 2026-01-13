@@ -484,12 +484,12 @@ public class KqlService {
 		while (matcher.find()) {
 			// 따음표 왼쪽(바깥쪽) 특수문자 처리
 			String outside = input.substring(lastIndex, matcher.start());
-			outside = outside.replaceAll("([''!@#$%^&*_+=\\[\\]{}|;:,.<>/?\\\\-])", "");// () 괄호지움
+			outside = outside.replaceAll("(['!@#$%^&*_+=\\[\\]{}|;:,.<>/?\\\\-])", "");// () 괄호지움
 			sb.append(outside);
 
 			// 따음표 안쪽 특수문자 처리
 			String inside = matcher.group(1);
-			inside = inside.replaceAll("([''!@#$%()^&*_+=\\[\\]{}|;:,.<>/?\\\\-])", "\\\\$1"); // ()유지
+			inside = inside.replaceAll("([!@#$%()^&*_+=\\[\\]{}|;:,.<>/?\\\\-])", "\\\\$1"); // ()유지
 			sb.append("\"").append(inside).append("\"");
 
 			lastIndex = matcher.end();
@@ -498,7 +498,7 @@ public class KqlService {
 		// 마지막 따음표번지 (바깥쪽) 특수문자 처리
 		if (lastIndex < input.length()) {
 			String behindQuotesString = input.substring(lastIndex);
-			behindQuotesString = behindQuotesString.replaceAll("([''!@#$%^&*_+=\\[\\]{}|;:,.<>/?-\\\\])", ""); // () 괄호지움
+			behindQuotesString = behindQuotesString.replaceAll("(['!@#$%^&*_+=\\[\\]{}|;:,.<>/?-\\\\])", ""); // () 괄호지움
 			sb.append(behindQuotesString);
 		}
 		return sb.toString();
