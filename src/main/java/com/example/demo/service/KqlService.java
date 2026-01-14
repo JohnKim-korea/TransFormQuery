@@ -88,7 +88,7 @@ public class KqlService {
 		WrongTextCheck(indexList,map); // 잘못된 텍스트를 검사함
 
 		if (!indexList.isEmpty() && !map.isEmpty()) {
-			result = KqlOrganize(otext, map, indexList); // 미완성
+			result = KqlOrganize(otext, map, indexList);
 		}
 
 		return result;
@@ -96,7 +96,9 @@ public class KqlService {
 	
 	// 연산자를 잘못쓸경우를 대비하여만듬
 	public static void WrongTextCheck(ArrayList<Integer> indexList,Map<Integer, String> map ) {
-		boolean hasNearNumer = map.values().stream().anyMatch(val -> val.matches("(?i)NEAR(?!\\s*\\d+)")); // (?!패턴) 해당 패턴이 오면 안된다.
+		boolean hasNearNumer = map.values().stream().anyMatch(val -> val.matches("(?i)NEAR(?!\\s*\\d+)")); 
+		//(?!A)B => 지금 위치 뒤에 A가 오면 안 되고, B를 매칭(앞에서 뒤를 봄)
+		//(?<!A)B => B 바로 앞에 A가 있으면 안 됨(뒤에서 앞을 봄)
 		if(hasNearNumer) {
 			throw new IllegalArgumentException("NEAR 연산자는 숫자랑 같이 써야합니다.");
 		}
