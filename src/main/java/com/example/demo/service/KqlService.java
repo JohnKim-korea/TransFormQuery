@@ -85,7 +85,7 @@ public class KqlService {
 		}
 		Collections.sort(indexList); // 순서에 맞게 정렬(오름차순)
 		
-		WrongTextCheck(indexList,map); // 잘못된 텍스트를 검사함
+		WrongTextCheck(indexList,map); // 잘못된 텍스트를 검사함 잘못넣었을 경우 오류로 던짐
 
 		if (!indexList.isEmpty() && !map.isEmpty()) {
 			result = KqlOrganize(otext, map, indexList);
@@ -97,8 +97,8 @@ public class KqlService {
 	// 연산자를 잘못쓸경우를 대비하여만듬
 	public static void WrongTextCheck(ArrayList<Integer> indexList,Map<Integer, String> map ) {
 		boolean hasNearNumer = map.values().stream().anyMatch(val -> val.matches("(?i)NEAR(?!\\s*\\d+)")); 
-		//(?!A)B => 지금 위치 뒤에 A가 오면 안 되고, B를 매칭(앞에서 뒤를 봄)
-		//(?<!A)B => B 바로 앞에 A가 있으면 안 됨(뒤에서 앞을 봄)
+		//A(?!B) => 지금 위치 뒤에 A가 오면 안 되고, B를 매칭(앞에서 뒤를 봄)
+		//A(?<!B) => B 바로 앞에 A가 있으면 안 됨(뒤에서 앞을 봄)
 		if(hasNearNumer) {
 			throw new IllegalArgumentException("NEAR 연산자는 숫자랑 같이 써야합니다.");
 		}
@@ -165,7 +165,7 @@ public class KqlService {
 	 * indexList 와 Map 을 기준으로 타겟문자 s 를 찾는 메서드인다.
 	 * 1. 0부터시작하여 마지막 indexList의 최솟값(처음 만들어진 토큰)까지 반복문(while)을 이용하여 타겟문자가 없을때까지 찾느다. 
 	 * 2. 정렬된 indexList를 기준으로 for 문을 돌린다음에 위에서 언급했던 반복문을 이용하여 블록간의 사이 사이를 타겟문자가 없을때까지 찾는다.
-	 * 3. 마지막으로 마지막토큰의 끝번호부터 시작해서 문자마지막 번지까지 반복문을 이용하여 타겟문자가 없을때까지 찾는다.
+	 * 3. 마지막으로 indexList 최댓값(마지막토큰의 시작번호)을 이용한 끝번호부터 시작해서 문자마지막 번지까지 반복문을 이용하여 타겟문자가 없을때까지 찾는다.
 	 * (While 문을 이용하여 찾는 이유는 이리하면 중복된 타겟문자를 찾을수있기때문이다.)
 	 * (While문의 break (findIndex == -1) => 타겟문자가 없을때까지)
 	 * */ 
