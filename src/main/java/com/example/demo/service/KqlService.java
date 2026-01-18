@@ -20,7 +20,10 @@ public class KqlService {
 		Map<Integer, String> map = new HashMap<>();
 		ArrayList<Integer> indexList = new ArrayList<>();
 		int index = 0;
-		text = escapeProcess(text);// 따음표 바깥에있는토큰들만 특수문자 처리 괄호도 포함
+		text = escapeProcess(text);// 따음표, 괄호 바깥에 있는 특수문자들만 지움
+		if(text.isBlank()) {
+			throw new IllegalArgumentException("특수문자는 따음표와 괄호안에 작성해주세요 !!");
+		}
 		text = NearAddQuotes(text);// near 숫자 패턴일때 따음표 추가
 		text = text.trim();
 		String otext = text; // 오리지널 텍스트
@@ -293,10 +296,14 @@ public class KqlService {
 		int num = 0;
 		for (int i = 0; i < otext.length(); i++) {
 			char c = otext.charAt(i);
-			if (c == '\"') {
+			if (c == '\"' &&(i==0 || otext.charAt(i-1) != '\\')) { // 이스케이프 따음표방지
 				inQuotes = !inQuotes; // true
 			}
 			if (!inQuotes) { // 따음표 감싸져있는건 제외
+				if(depth == 0 && c == ')') {
+					throw new IllegalArgumentException("닫는괄호가 먼저나왔습니다.");
+				}
+				
 				if (c == '(') {
 					depth++;
 					int open = i; // 첫번째 여는괄호
@@ -439,7 +446,7 @@ public class KqlService {
 					}
 				}
 				wd.appendTail(sbf);
-				token = "(" + sbf.toString().replaceAll("([!@#$%^&*_+=\\[\\]{}|;:,.<>/?\\\\-])", "\\\\$1") + ")"; // 특수문자
+				token = "(" + sbf.toString().replaceAll("(?<!\\\\)([!@#$%^&*_+=\\[\\]{}|;:,.<>/?\\\\-])", "\\\\$1") + ")"; // 특수문자
 																													// 이스케이프
 																													// 처리
 			}
@@ -472,38 +479,65 @@ public class KqlService {
 		return rtext;
 	}
 
-	// 따음표 바깥특수문자들은 지우고 따음표안은 특수문자들은 이스케이프처리
+	// 따음표 안의 특수문자는 이스케이프 처리 괄호 안은 논외 그외 바깥은 삭제
 	public static String escapeProcess(String input) {
-		if (input.isEmpty())
+		if (input.isEmpty()) {
 			return "";
-		int lastIndex = 0;
-		StringBuffer sb = new StringBuffer();
-		Pattern pattern = Pattern.compile("\"([^\"]*)\""); // 따음표로 감싸져있는경우
-		Matcher matcher = pattern.matcher(input);
-		if (!matcher.find())
-			return input;
-		matcher.reset();
-		while (matcher.find()) {
-			// 따음표 왼쪽(바깥쪽) 특수문자 처리
-			String outside = input.substring(lastIndex, matcher.start());
-			outside = outside.replaceAll("(['!@#$%^&*_+=\\[\\]{}|;:,.<>/?\\\\-])", "");// () 괄호지움
-			sb.append(outside);
-
-			// 따음표 안쪽 특수문자 처리
-			String inside = matcher.group(1);
-			inside = inside.replaceAll("([!@#$%()^&*_+=\\[\\]{}|;:,.<>/?\\\\-])", "\\\\$1"); // ()유지
-			sb.append("\"").append(inside).append("\"");
-
-			lastIndex = matcher.end();
 		}
+		StringBuffer result = new StringBuffer();
+		int depth = 0;
+		boolean inqutoes = false;
+		for(int i = 0; i<input.length();i++) {
+			char c = input.charAt(i);
+			if(c == '"') {
+				inqutoes = !inqutoes;
+				result.append(c);
+				continue;
+			}
+					
+			if(inqutoes) {
+				if(isSpecialWord(c)) {
+					result.append("\\");
+				}
+				result.append(c);
+				continue;
+			}
+			
+			if (!inqutoes) {
+				if (c == '(') {
+					depth++;
+					result.append(c);
+					continue;
+				}
 
-		// 마지막 따음표번지 (바깥쪽) 특수문자 처리
-		if (lastIndex < input.length()) {
-			String behindQuotesString = input.substring(lastIndex);
-			behindQuotesString = behindQuotesString.replaceAll("(['!@#$%^&*_+=\\[\\]{}|;:,.<>/?-\\\\])", ""); // () 괄호지움
-			sb.append(behindQuotesString);
+				if (c == ')') {
+					if(depth == 0) {
+						throw new IllegalArgumentException("닫는괄호가 먼저나왔습니다.");
+					}
+					
+					depth--;
+					result.append(c);
+					continue;
+				}
+			}
+			
+			if(!(inqutoes || (depth > 0)) && isSpecialWord(c)) { //따음표 바깥구간들
+				continue;
+			}
+			result.append(c);
+			
 		}
-		return sb.toString();
+		if(depth > 0) {
+			throw new IllegalArgumentException("괄호가 재대로 안닫혀있습니다.");
+		}
+		
+		return result.toString();
+	}
+	
+	public static boolean isSpecialWord(char c) {
+		String specialword = "!@#$%^&*+=[]{}|;:,.<>/?\\-";
+		int res = specialword.indexOf(c);
+		return res >= 0;
 	}
 
 }
